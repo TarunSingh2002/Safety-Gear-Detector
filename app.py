@@ -1,11 +1,12 @@
-from flask import Flask, request, render_template, send_file, redirect, url_for, Response
-import cv2
+from flask import Flask, request, render_template, redirect, url_for, Response
+import moviepy.editor as mp
 from ultralytics import YOLO
 from PIL import Image as PILImage
 import numpy as np
 import os
 import base64
 import logging
+import cv2
 from flask_cors import CORS
 
 app = Flask(__name__)
@@ -45,7 +46,8 @@ def upload_file():
         if file_ext in ['mp4']:
             filename = os.path.join(app.config['UPLOAD_FOLDER'], file.filename)
             file.save(filename)
-            return redirect(url_for('display_video', filename=file.filename))
+            processed_filename = process_video(filename)
+            return redirect(url_for('display_video', filename=processed_filename))
         else:
             return display_image(file)
 
@@ -62,54 +64,31 @@ def display_image(file):
     
     return render_template('display_image.html', image_data=pred_image_base64)
 
+def process_video(filepath):
+    input_path = filepath
+    output_filename = 'processed_' + os.path.basename(filepath)
+    output_path = os.path.join(app.config['OUTPUT_FOLDER'], output_filename)
+
+    # Open the video file using moviepy
+    video = mp.VideoFileClip(input_path)
+
+    def process_frame(frame):
+        # Process each frame using YOLO
+        results = model.predict(source=frame)
+        pred_frame = results[0].plot()
+        return pred_frame
+
+    # Process the video frames
+    processed_video = video.fl_image(process_frame)
+
+    # Write the processed video to the output path
+    processed_video.write_videofile(output_path, codec='libx264')
+
+    return output_filename
+
 @app.route('/display_video/<filename>')
 def display_video(filename):
     return render_template('display_video.html', filename=filename)
-    # filename = request.args.get('filename')
-    # input_path = os.path.join(app.config['UPLOAD_FOLDER'], filename)
-    # output_path = os.path.join(app.config['OUTPUT_FOLDER'], 'processed_' + filename)
-
-    # if not os.path.exists(input_path):
-    #     return 'File not found', 404
-
-    # logging.debug(f"Processing video: {input_path}")
-    # process_video(input_path, output_path)
-
-    # if os.path.exists(input_path):
-    #     os.remove(input_path)  # Delete the original video after processing
-
-    # if not os.path.exists(output_path):
-    #     logging.error(f"Processed video not found: {output_path}")
-    #     return 'Processed video not found', 404
-
-    # logging.debug(f"Processed video saved at: {output_path}")
-    # return render_template('display_video.html', video_filename='processed_' + filename)
-
-# def process_video(input_path, output_path):
-#     cap = cv2.VideoCapture(input_path)
-#     fourcc = cv2.VideoWriter_fourcc(*'mp4v')
-#     out = cv2.VideoWriter(output_path, fourcc, 20.0, (int(cap.get(3)), int(cap.get(4))))
-
-#     while cap.isOpened():
-#         ret, frame = cap.read()
-#         if not ret:
-#             break
-#         rgb_frame = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
-#         results = model.predict(source=rgb_frame)
-#         pred_image = results[0].plot()
-#         out.write(pred_image)
-    
-#     cap.release()
-#     out.release()
-
-# @app.route('/video/<filename>')
-# def serve_video(filename):
-#     video_path = os.path.join(app.config['OUTPUT_FOLDER'], filename)
-#     if not os.path.exists(video_path):
-#         logging.error(f"Video not found: {video_path}")
-#         return 'Video not found', 404
-#     logging.debug(f"Serving video: {video_path}")
-#     return send_file(video_path, as_attachment=False, mimetype='video/mp4')
 
 @app.route('/cleanup/<filename>')
 def cleanup(filename):
@@ -122,17 +101,3 @@ if __name__ == '__main__':
     os.makedirs(app.config['UPLOAD_FOLDER'], exist_ok=True)
     os.makedirs(app.config['OUTPUT_FOLDER'], exist_ok=True)
     app.run(debug=True)
-
-# @app.route('/upload', methods=['POST'])
-# def upload_file():
-#     if 'file' not in request.files:
-#         return redirect(request.url)
-#     file = request.files['file']
-#     if file.filename == '':
-#         return redirect(request.url)
-#     if file and allowed_file(file.filename):
-#         filename = file.filename
-#         file.save(os.path.join(app.config['UPLOAD_FOLDER'], filename))
-#         return redirect(url_for('play_video', filename=filename))
-#     return redirect(request.url)
-
