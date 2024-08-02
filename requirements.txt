@@ -1,7 +1,5 @@
 ultralytics==8.0.114
-ipython
-opencv-python-headless
-pillow
 Flask
-flask_cors
 moviepy
+aws-wsgi
+

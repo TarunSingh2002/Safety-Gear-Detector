@@ -1,9 +1,21 @@
 FROM public.ecr.aws/lambda/python:3.9
-WORKDIR ${LAMBDA_TASK_ROOT}
-COPY requirements.txt .
-RUN pip install --no-cache-dir -r requirements.txt
+
+# Install OS-level dependencies
+RUN yum install -y \
+    mesa-libGL \
+    mesa-libGLU \
+    libXext \
+    libXrender \
+    libSM \
+    ffmpeg \
+    && yum clean all
+
+COPY requirements.txt ./
+RUN pip install -r requirements.txt
+
 COPY app.py ./
-COPY static/ ./static/
-COPY models/best.pt ./models/
-COPY templates/ ./templates/
+COPY templates ./templates
+COPY static ./static
+COPY models ./models
+
 CMD ["app.handler"]

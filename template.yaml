@@ -1,23 +1,23 @@
 AWSTemplateFormatVersion: '2010-09-09'
 Transform: AWS::Serverless-2016-10-31
+
 Resources:
-  FlaskApi:
+  MyApi:
+    Type: AWS::Serverless::Api
+    Properties:
+      StageName: Prod
+      
+  SafetyGearDetector:
     Type: AWS::Serverless::Function
     Properties:
       PackageType: Image
-      Architectures:
-        - x86_64
       ImageUri: safetygeardetector:latest
-      MemorySize: 3008
-      Timeout: 300
-      Environment:
-        Variables:
-          UPLOAD_FOLDER: /tmp/uploads
-          OUTPUT_FOLDER: /tmp/output
+      Timeout: 900
+      MemorySize: 10048
       Events:
-        Index:
+        ApiRoot:
           Type: Api
           Properties:
+            RestApiId: !Ref MyApi
             Path: /
-            Method: GET
-        
+            Method: ANY
