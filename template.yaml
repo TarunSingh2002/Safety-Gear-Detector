@@ -2,22 +2,50 @@ AWSTemplateFormatVersion: '2010-09-09'
 Transform: AWS::Serverless-2016-10-31
 
 Resources:
-  MyApi:
+  SafetyGearDetectorApi:
     Type: AWS::Serverless::Api
     Properties:
       StageName: Prod
-      
-  SafetyGearDetector:
+
+  SafetyGearDetectorFunction:
     Type: AWS::Serverless::Function
     Properties:
       PackageType: Image
       ImageUri: safetygeardetector:latest
       Timeout: 900
-      MemorySize: 10048
       Events:
         ApiRoot:
           Type: Api
           Properties:
-            RestApiId: !Ref MyApi
+            RestApiId: !Ref SafetyGearDetectorApi
             Path: /
             Method: ANY
+        Upload:
+          Type: Api
+          Properties:
+            RestApiId: !Ref SafetyGearDetectorApi
+            Path: /upload
+            Method: POST
+        DisplayVideo:
+          Type: Api
+          Properties:
+            RestApiId: !Ref SafetyGearDetectorApi
+            Path: /display_video/{filename}
+            Method: GET
+        Cleanup:
+          Type: Api
+          Properties:
+            RestApiId: !Ref SafetyGearDetectorApi
+            Path: /cleanup/{filename}
+            Method: GET
+        UploadAnotherVideo:
+          Type: Api
+          Properties:
+            RestApiId: !Ref SafetyGearDetectorApi
+            Path: /upload_another_video
+            Method: GET
+
+Outputs:
+  ApiUrl:
+    Description: "URL for the Safety Gear Detector API"
+    Value: !Sub "https://${SafetyGearDetectorApi}.execute-api.${AWS::Region}.amazonaws.com/Prod/"
